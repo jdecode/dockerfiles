@@ -104,3 +104,7 @@ xdebug.client_host = host.docker.internal \n\
 ' > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 
+
+RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
+
+
