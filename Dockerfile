@@ -107,4 +107,10 @@ xdebug.client_host = host.docker.internal \n\
 
 RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
 
+## Update composer
+RUN composer self-update
+
+## Install 7-zip [shows missing in `composer diagnose`
+RUN apt-get install p7zip-full -y
+
 
