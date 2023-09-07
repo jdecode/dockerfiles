@@ -1,71 +1,124 @@
-FROM ubuntu:20.04
+FROM php:8.2-apache
 
-ENV DEBIAN_FRONTEND="noninteractive"
-ENV JAVA_VERSION="11"
-ENV ANDROID_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-7583922_latest.zip"
-ENV ANDROID_VERSION="29"
-ENV ANDROID_BUILD_TOOLS_VERSION="29.0.3"
-ENV ANDROID_ARCHITECTURE="x86_64"
-ENV ANDROID_SDK_ROOT="/usr/local/android-sdk"
-ENV FLUTTER_CHANNEL="stable"
-ENV FLUTTER_VERSION="3.0.2"
-ENV GRADLE_VERSION="7.2"
-ENV GRADLE_USER_HOME="/opt/gradle"
-ENV GRADLE_URL="https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-ENV FLUTTER_URL="https://storage.googleapis.com/flutter_infra_release/releases/$FLUTTER_CHANNEL/linux/flutter_linux_$FLUTTER_VERSION-$FLUTTER_CHANNEL.tar.xz"
-ENV FLUTTER_ROOT="/opt/flutter"
-ENV PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/emulator:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/platforms:$FLUTTER_ROOT/bin:$GRADLE_USER_HOME/bin:$PATH"
+ARG NODE_VERSION=18
+ARG POSTGRES_VERSION=14
+#ARG XDEBUG_START_WITH_REQUEST=1
 
-# Install the necessary dependencies.
-RUN apt-get update \
-  && apt-get install --yes --no-install-recommends \
-    openjdk-$JAVA_VERSION-jdk \
-    curl \
-    unzip \
-    sed \
-    git \
-    bash \
-    xz-utils \
-    libglvnd0 \
-    ssh \
-    xauth \
-    x11-xserver-utils \
-    libpulse0 \
-    libxcomposite1 \
-    libgl1-mesa-glx \
-  && rm -rf /var/lib/{apt,dpkg,cache,log}
 
-# Install Gradle.
-RUN curl -L $GRADLE_URL -o gradle-$GRADLE_VERSION-bin.zip \
-  && apt-get install -y unzip \
-  && unzip gradle-$GRADLE_VERSION-bin.zip \
-  && mv gradle-$GRADLE_VERSION $GRADLE_USER_HOME \
-  && rm gradle-$GRADLE_VERSION-bin.zip
+WORKDIR /var/www/html
 
-# Install the Android SDK.
-RUN mkdir /root/.android \
-  && touch /root/.android/repositories.cfg \
-  && mkdir -p $ANDROID_SDK_ROOT \
-  && curl -o android_tools.zip $ANDROID_TOOLS_URL \
-  && unzip -qq -d "$ANDROID_SDK_ROOT" android_tools.zip \
-  && rm android_tools.zip \
-  && mv $ANDROID_SDK_ROOT/cmdline-tools $ANDROID_SDK_ROOT/latest \
-  && mkdir -p $ANDROID_SDK_ROOT/cmdline-tools \
-  && mv $ANDROID_SDK_ROOT/latest $ANDROID_SDK_ROOT/cmdline-tools/latest \
-  && yes "y" | sdkmanager "build-tools;$ANDROID_BUILD_TOOLS_VERSION" \
-  && yes "y" | sdkmanager "platforms;android-$ANDROID_VERSION" \
-  && yes "y" | sdkmanager "platform-tools"
+RUN apt-get update
 
-# Install Flutter.
-RUN curl -o flutter.tar.xz $FLUTTER_URL \
-  && mkdir -p $FLUTTER_ROOT \
-  && tar xf flutter.tar.xz -C /opt/ \
-  && rm flutter.tar.xz \
-  && git config --global --add safe.directory /opt/flutter \
-  && flutter config --no-analytics \
-  && flutter precache \
-  && yes "y" | flutter doctor --android-licenses \
-  && flutter doctor \
-  && flutter update-packages
+RUN apt-get install -y ca-certificates gnupg
+RUN mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_VERSION.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
+RUN apt-get update
+
+# Install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+#Install zip+icu dev libs, wget, git
+RUN apt-get install libzip-dev zip libicu-dev libpng-dev wget git -y
+
+#Install PHP extensions zip and intl (intl requires to be configured)
+RUN docker-php-ext-install zip && docker-php-ext-configure intl && docker-php-ext-install intl exif gd
+
+#PostgreSQL
+RUN apt-get install libpq-dev -y
+RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && docker-php-ext-install pdo_pgsql pgsql
+
+
+RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
+
+RUN a2enmod rewrite
+
+RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
+
+# Set Apache webroot to "public" folder (for Laravel support)
+RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+
+
+## -------------------------------
+##          Start OpenSSL
+## -------------------------------
+
+# Prepare fake SSL certificate
+RUN apt-get install -y ssl-cert
+RUN openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 -subj  "/C=UK/ST=EN/L=LN/O=FNL/CN=127.0.0.1" -keyout ./docker-ssl.key -out ./docker-ssl.pem -outform PEM
+RUN mv docker-ssl.pem /etc/ssl/certs/ssl-cert-snakeoil.pem
+RUN mv docker-ssl.key /etc/ssl/private/ssl-cert-snakeoil.key
+
+# Setup Apache2 mod_ssl
+RUN a2enmod ssl
+# Setup Apache2 HTTPS env
+RUN a2ensite default-ssl.conf
+
+## -------------------------------
+##          End OpenSSL
+## -------------------------------
+
+
+
+## ---------------------------------------
+##      Install Node 18.x
+## ---------------------------------------
+
+RUN apt-get install nodejs -y
+RUN npm install -g npm
+
+## ---------------------------------------
+##      Node 18.x installed
+## ---------------------------------------
+
+
+
+
+## ---------------------------------------
+##      Install Postman CLI
+## ---------------------------------------
+
+RUN curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
+## ---------------------------------------
+##      Postman CLI installed
+## ---------------------------------------
+
+
+
+
+## ---------------------------------------
+##      Install vim
+## ---------------------------------------
+
+RUN apt-get install vim -y
+
+## ---------------------------------------
+##      vim installed
+## ---------------------------------------
+
+
+## ---------------------------------------
+##      Install xdebug 3.x
+## ---------------------------------------
+
+#RUN pecl install xdebug
+#RUN docker-php-ext-enable xdebug
+
+## ---------------------------------------
+##      xdebug 3.x installed
+## ---------------------------------------
+
+# If this cofiguration is not the one you want, you can override this in Dockerfile of your project
+# If overriding does not work, then use this file as source to generate a new docker image with following lines as commented
+#RUN echo '\
+#zend_extension=xdebug \n\
+#xdebug.mode = debug,coverage \n\
+#xdebug.start_with_request = ${XDEBUG_START_WITH_REQUEST} \n\
+#xdebug.discover_client_host = on \n\
+#xdebug.client_host = host.docker.internal \n\
+#' > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
