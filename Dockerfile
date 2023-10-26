@@ -1,8 +1,6 @@
 FROM php:8.2-apache
 
 ARG NODE_VERSION=18
-ARG POSTGRES_VERSION=14
-#ARG XDEBUG_START_WITH_REQUEST=1
 
 
 WORKDIR /var/www/html
@@ -20,10 +18,18 @@ RUN apt-get update
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 #Install zip+icu dev libs, wget, git
-RUN apt-get install libzip-dev zip libicu-dev libpng-dev wget git -y
+RUN apt-get install \
+    exif zip unzip wget git \
+    libzip-dev libicu-dev libpng-dev libjpeg-dev libfreetype6-dev zlib1g-dev  -y
 
-#Install PHP extensions zip and intl (intl requires to be configured)
-RUN docker-php-ext-install zip && docker-php-ext-configure intl && docker-php-ext-install intl exif gd
+#RUN apk add libjpeg-dev libpng-dev \
+RUN docker-php-ext-configure gd --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd
+
+#Install intl (intl requires to be configured)
+RUN docker-php-ext-configure intl && docker-php-ext-install intl
+RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg
+RUN docker-php-ext-install -j$(nproc) gd
 
 #PostgreSQL
 RUN apt-get install libpq-dev -y
@@ -32,49 +38,44 @@ RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && docker-php-ex
 
 RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 
+# Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
-
-# Set Apache webroot to "public" folder (for Laravel support)
+# Set Apache webroot to "public" folder
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 
 
 ## -------------------------------
-##          Start OpenSSL
+##      Setup Apache2 mod_ssl
 ## -------------------------------
 
 # Prepare fake SSL certificate
 RUN apt-get install -y ssl-cert
-RUN openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 -subj  "/C=UK/ST=EN/L=LN/O=FNL/CN=127.0.0.1" -keyout ./docker-ssl.key -out ./docker-ssl.pem -outform PEM
+RUN openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 -subj  "/C=UK/ST=EN/L=LN/O=FL/CN=127.0.0.1" -keyout ./docker-ssl.key -out ./docker-ssl.pem -outform PEM
 RUN mv docker-ssl.pem /etc/ssl/certs/ssl-cert-snakeoil.pem
 RUN mv docker-ssl.key /etc/ssl/private/ssl-cert-snakeoil.key
 
-# Setup Apache2 mod_ssl
+# Enable the mod and default ssl site
 RUN a2enmod ssl
-# Setup Apache2 HTTPS env
 RUN a2ensite default-ssl.conf
 
 ## -------------------------------
-##          End OpenSSL
+##      Apache2 mod_ssl setup
 ## -------------------------------
 
 
-
 ## ---------------------------------------
-##      Install Node 18.x
+##      Install Node
 ## ---------------------------------------
 
 RUN apt-get install nodejs -y
 RUN npm install -g npm
 
 ## ---------------------------------------
-##      Node 18.x installed
+##      Node installed
 ## ---------------------------------------
-
-
 
 
 ## ---------------------------------------
@@ -82,13 +83,8 @@ RUN npm install -g npm
 ## ---------------------------------------
 
 RUN curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-## ---------------------------------------
 ##      Postman CLI installed
 ## ---------------------------------------
-
-
-
 
 ## ---------------------------------------
 ##      Install vim
@@ -113,12 +109,19 @@ RUN apt-get install vim -y
 ## ---------------------------------------
 
 # If this cofiguration is not the one you want, you can override this in Dockerfile of your project
-# If overriding does not work, then use this file as source to generate a new docker image with following lines as commented
+# If overriding does not work, then use this file as source to generate a new docker image without following lines
 #RUN echo '\
 #zend_extension=xdebug \n\
 #xdebug.mode = debug,coverage \n\
-#xdebug.start_with_request = ${XDEBUG_START_WITH_REQUEST} \n\
 #xdebug.discover_client_host = on \n\
 #xdebug.client_host = host.docker.internal \n\
 #' > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+
+RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
+
+RUN echo "Mutex posixsem" >> /etc/apache2/apache2.conf
+
+RUN echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/docker-php-upload.ini \
+    && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/docker-php-upload.ini
 
