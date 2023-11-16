@@ -1,6 +1,6 @@
-FROM php:8.2-apache
+FROM php:8.2.11-apache
 
-ARG NODE_VERSION=18
+ARG NODE_VERSION=20
 
 
 WORKDIR /var/www/html
@@ -22,12 +22,10 @@ RUN apt-get install \
     exif zip unzip wget git \
     libzip-dev libicu-dev libpng-dev libjpeg-dev libfreetype6-dev zlib1g-dev  -y
 
-#RUN apk add libjpeg-dev libpng-dev \
-RUN docker-php-ext-configure gd --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd
-
 #Install intl (intl requires to be configured)
 RUN docker-php-ext-configure intl && docker-php-ext-install intl
+
+#Install GD with jpeg support
 RUN docker-php-ext-configure gd --enable-gd --with-freetype --with-jpeg
 RUN docker-php-ext-install -j$(nproc) gd
 
@@ -41,7 +39,6 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Set Apache webroot to "public" folder
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
@@ -70,8 +67,8 @@ RUN a2ensite default-ssl.conf
 ##      Install Node
 ## ---------------------------------------
 
-RUN apt-get install nodejs -y
-RUN npm install -g npm
+#RUN apt-get install nodejs -y
+#RUN npm install -g npm
 
 ## ---------------------------------------
 ##      Node installed
@@ -83,6 +80,7 @@ RUN npm install -g npm
 ## ---------------------------------------
 
 RUN curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+
 ##      Postman CLI installed
 ## ---------------------------------------
 
@@ -124,4 +122,5 @@ RUN echo "Mutex posixsem" >> /etc/apache2/apache2.conf
 
 RUN echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/docker-php-upload.ini \
     && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/docker-php-upload.ini
+
 
