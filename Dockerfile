@@ -115,8 +115,8 @@ COPY ini/opcache.ini /usr/local/etc/php/conf.d/20-docker-php-ext-opcache.ini
 ##      Install xdebug 3.x
 ## ---------------------------------------
 
-#RUN pecl install xdebug
-#RUN docker-php-ext-enable xdebug
+RUN pecl install xdebug
+RUN docker-php-ext-enable xdebug
 
 ## ---------------------------------------
 ##      xdebug 3.x installed
@@ -124,7 +124,7 @@ COPY ini/opcache.ini /usr/local/etc/php/conf.d/20-docker-php-ext-opcache.ini
 
 # If this cofiguration is not the one you want, you can override this in Dockerfile of your project
 # If overriding does not work, then use this file as source to generate a new docker image without following lines
-#COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
+COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
 
 
 RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
