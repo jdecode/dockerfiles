@@ -129,7 +129,8 @@ RUN pecl install xdebug
 # If overriding does not work, then use this file as source to generate a new docker image without following lines
 COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
 
-RUN echo ';Placeholder php.ini' > /usr/local/etc/php/php.ini
+COPY ini/php.ini ./php.ini
+RUN cat php.ini >> /usr/local/etc/php/php.ini
 
 RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
 
