@@ -32,6 +32,9 @@ RUN docker-php-ext-install -j$(nproc) gd
 RUN apt-get install libpq-dev -y
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && docker-php-ext-install pdo_pgsql pgsql
 
+#MySQL
+RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable pdo_mysql
+
 
 RUN echo "Mutex posixsem" >> /etc/apache2/apache2.conf
 COPY ini/file-upload.ini /usr/local/etc/php/conf.d/10-docker-php-upload.ini
@@ -83,7 +86,7 @@ RUN npm install -g npm
 ##      Install Postman CLI
 ## ---------------------------------------
 
-RUN curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
+#RUN curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
 
 ##      Postman CLI installed
 ## ---------------------------------------
@@ -102,12 +105,12 @@ RUN apt-get install vim -y
 ##      Install Opcache
 ## ---------------------------------------
 
-#RUN docker-php-ext-install opcache
+RUN docker-php-ext-install opcache
 
-#COPY ini/opcache.ini ./opcache.ini
+COPY ini/opcache.ini ./opcache.ini
 
-#RUN cat ./opcache.ini >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
-#RUN mv /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini /usr/local/etc/php/conf.d/20-docker-php-ext-opcache.ini
+RUN cat ./opcache.ini >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
+RUN mv /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini /usr/local/etc/php/conf.d/20-docker-php-ext-opcache.ini
 
 ## ---------------------------------------
 ##      Opcache installed
@@ -118,7 +121,7 @@ RUN apt-get install vim -y
 ##      Install xdebug 3.x
 ## ---------------------------------------
 
-RUN pecl install xdebug
+#RUN pecl install xdebug
 #RUN docker-php-ext-enable xdebug
 
 ## ---------------------------------------
@@ -127,10 +130,13 @@ RUN pecl install xdebug
 
 # If this cofiguration is not the one you want, you can override this in Dockerfile of your project
 # If overriding does not work, then use this file as source to generate a new docker image without following lines
-COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
+#COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
 
 COPY ini/php.ini ./php.ini
 RUN cat php.ini >> /usr/local/etc/php/php.ini
 
 RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
+
+### Install additional extensions : calendar, zip
+RUN docker-php-ext-install calendar zip
 
