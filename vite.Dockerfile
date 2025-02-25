@@ -1,16 +1,4 @@
-FROM php:8.3-apache
-
-ARG NODE_VERSION=20
-
-WORKDIR /var/www/html
-
-RUN apt-get update
-
-# Node pre-installation
-RUN apt-get install -y ca-certificates gnupg
-RUN mkdir -p /etc/apt/keyrings
-RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_VERSION.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+FROM php:8.4-apache
 
 RUN apt-get update
 
@@ -36,8 +24,11 @@ RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && docker-php-ex
 # MySQL - Enable, if/when needed
 #RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable pdo_mysql
 
+# Mcrypt (not working ATM, hence commented)
+#RUN docker-php-ext-configure mcrypt && docker-php-ext-install mcrypt 
+
 # Install additional extensions : calendar, zip
-RUN docker-php-ext-install calendar zip
+RUN docker-php-ext-install calendar zip 
 
 # Apache crashing fix. Ref : https://serverok.in/apache-ah00144-couldnt-grab-the-accept-mutex
 RUN echo "Mutex posixsem" >> /etc/apache2/apache2.conf
@@ -48,7 +39,7 @@ RUN echo "Mutex posixsem" >> /etc/apache2/apache2.conf
 ## memory_limit = 512M
 ## ---------------------------------------
 
-COPY ini/file-upload.ini /usr/local/etc/php/conf.d/10-docker-php-upload.ini
+#COPY ini/file-upload.ini /usr/local/etc/php/conf.d/10-docker-php-upload.ini
 
 
 ## ---------------------------------------
@@ -67,9 +58,9 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# For Laravel - Change DocumentRoot to /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# For Laravel - Change DocumentRoot to /var/www/html/webroot
+RUN sed -ri -e 's!/var/www/html!/var/www/html/webroot!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!/var/www/html/webroot!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 ## ---------------------------------------
 ##      Setup Apache2 mod_ssl
@@ -94,6 +85,18 @@ RUN a2ensite default-ssl.conf
 ##      Install Node
 ## ---------------------------------------
 
+ARG NODE_VERSION=22
+
+WORKDIR /var/www/html
+
+# Node pre-installation
+RUN apt-get install -y ca-certificates gnupg
+RUN mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_VERSION.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+RUN apt-get update
+
 RUN apt-get install nodejs -y
 RUN npm install -g npm
 
@@ -102,53 +105,7 @@ RUN npm install -g npm
 ## ---------------------------------------
 
 
-## ---------------------------------------
-##      Install Postman CLI - if/when needed
-## ---------------------------------------
-
-#RUN curl -o- "https://dl-cli.pstmn.io/install/linux64.sh" | sh
-
-##      Postman CLI installed
-## ---------------------------------------
-
-## ---------------------------------------
-##      Install vim
-## ---------------------------------------
-
-RUN apt-get install vim -y
-
-## ---------------------------------------
-##      vim installed
-## ---------------------------------------
-
-## ---------------------------------------
-##      Install Opcache
-## ---------------------------------------
-
-RUN docker-php-ext-install opcache
-COPY ini/opcache.ini ./opcache.ini
-RUN cat ./opcache.ini >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
-RUN mv /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini /usr/local/etc/php/conf.d/20-docker-php-ext-opcache.ini
-
-## ---------------------------------------
-##      Opcache installed
-## ---------------------------------------
-
-
-## ---------------------------------------
-##      Install xdebug 3.x
-## ---------------------------------------
-
-#RUN pecl install xdebug
-#RUN docker-php-ext-enable xdebug
-
-## ---------------------------------------
-##      xdebug 3.x installed
-## ---------------------------------------
-
-# If this cofiguration is not the one you want, you can override this in Dockerfile of your project
-# If overriding does not work, then use this file as source to generate a new docker image without following lines
-#COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
-
 ## Update the user and group to match the host user (Never works!!)
 RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
+
+
