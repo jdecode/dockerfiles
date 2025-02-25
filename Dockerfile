@@ -34,10 +34,13 @@ RUN apt-get install libpq-dev -y
 RUN docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql && docker-php-ext-install pdo_pgsql pgsql
 
 # MySQL - Enable, if/when needed
-#RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable pdo_mysql
+RUN docker-php-ext-install mysqli pdo pdo_mysql && docker-php-ext-enable pdo_mysql
+
+# Mcrypt (not working ATM, hence commented)
+#RUN docker-php-ext-configure mcrypt && docker-php-ext-install mcrypt 
 
 # Install additional extensions : calendar, zip
-RUN docker-php-ext-install calendar zip
+RUN docker-php-ext-install calendar zip 
 
 # Apache crashing fix. Ref : https://serverok.in/apache-ah00144-couldnt-grab-the-accept-mutex
 RUN echo "Mutex posixsem" >> /etc/apache2/apache2.conf
@@ -67,9 +70,9 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# For Laravel - Change DocumentRoot to /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# For CakePHP - Change DocumentRoot to /var/www/html/webroot
+RUN sed -ri -e 's!/var/www/html!/var/www/html/webroot!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!/var/www/html/webroot!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 ## ---------------------------------------
 ##      Setup Apache2 mod_ssl
@@ -139,8 +142,8 @@ RUN mv /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini /usr/local/etc/php/c
 ##      Install xdebug 3.x
 ## ---------------------------------------
 
-RUN pecl install xdebug
-RUN docker-php-ext-enable xdebug
+#RUN pecl install xdebug
+#RUN docker-php-ext-enable xdebug
 
 ## ---------------------------------------
 ##      xdebug 3.x installed
@@ -148,7 +151,9 @@ RUN docker-php-ext-enable xdebug
 
 # If this cofiguration is not the one you want, you can override this in Dockerfile of your project
 # If overriding does not work, then use this file as source to generate a new docker image without following lines
-COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
+#COPY ini/xdebug.ini /usr/local/etc/php/conf.d/99-docker-php-ext-xdebug.ini
 
 ## Update the user and group to match the host user (Never works!!)
 RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
+
+
