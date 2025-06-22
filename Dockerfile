@@ -58,9 +58,9 @@ RUN sed -i 's/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# For Laravel - Change DocumentRoot to /var/www/html/webroot
-RUN sed -ri -e 's!/var/www/html!/var/www/html/webroot!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!/var/www/html/webroot!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# For Laravel - Change DocumentRoot to /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!/var/www/html/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 ## ---------------------------------------
 ##      Setup Apache2 mod_ssl
@@ -68,7 +68,7 @@ RUN sed -ri -e 's!/var/www/!/var/www/html/webroot!g' /etc/apache2/apache2.conf /
 
 # Prepare fake SSL certificate
 RUN apt-get install -y ssl-cert
-RUN openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 -subj  "/C=UK/ST=EN/L=LN/O=FL/CN=127.0.0.1" -keyout ./docker-ssl.key -out ./docker-ssl.pem -outform PEM
+RUN openssl req -new -newkey rsa:4096 -days 3650 -nodes -x509 -subj  "/C=IN/ST=PB/L=MH/O=SV/CN=127.0.0.1" -keyout ./docker-ssl.key -out ./docker-ssl.pem -outform PEM
 RUN mv docker-ssl.pem /etc/ssl/certs/ssl-cert-snakeoil.pem
 RUN mv docker-ssl.key /etc/ssl/private/ssl-cert-snakeoil.key
 
