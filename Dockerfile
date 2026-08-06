@@ -110,6 +110,10 @@ RUN npm install -g npm
 #xdebug.client_host=host.docker.internal \n\
 #' > /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
+### Following steps are working as of August 06, 2026, and the above `pecl` command is not working
+RUN pecl install https://pecl.php.net/get/xdebug-3.4.0.tgz
+RUN docker-php-ext-enable xdebug
+RUN echo "xdebug.mode=debug,coverage" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
 
 ## ---------------------------------------
 ##      xdebug 3.x installed
