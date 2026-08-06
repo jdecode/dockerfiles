@@ -126,8 +126,8 @@ RUN usermod -u 1001 www-data && groupmod -g 1001 www-data
 RUN echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/docker-php-upload.ini \
     && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/docker-php-upload.ini
 
-RUN pecl install redis \
-    && docker-php-ext-enable redis
+#RUN pecl install redis \
+#    && docker-php-ext-enable redis
 
 RUN apt update && apt install systemd -y
 
