@@ -98,8 +98,8 @@ RUN npm install -g npm
 ##      Install xdebug 3.x
 ## ---------------------------------------
 
-RUN pecl install xdebug
-RUN docker-php-ext-enable xdebug
+#RUN pecl install xdebug
+#RUN docker-php-ext-enable xdebug
 
 # If this cofiguration is not the one you want, you can override this in Dockerfile of your project
 # If overriding does not work, then use this file as source to generate a new docker image without following lines
