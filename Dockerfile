@@ -1,4 +1,4 @@
-FROM php:8.4-apache
+FROM php:8.5-apache
 
 RUN apt-get update
 
@@ -128,7 +128,7 @@ RUN apt-get install vim -y
 ##      Install Opcache
 ## ---------------------------------------
 
-RUN docker-php-ext-install opcache
+#RUN docker-php-ext-install opcache
 #COPY ini/opcache.ini ./opcache.ini
 #RUN cat ./opcache.ini >> /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini
 #RUN mv /usr/local/etc/php/conf.d/docker-php-ext-opcache.ini /usr/local/etc/php/conf.d/20-docker-php-ext-opcache.ini
